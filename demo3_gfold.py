@@ -34,11 +34,6 @@ def rotation_mat(src):
     ])
 
 
-def transform(vec, mat):
-    res = np.array(vec) * mat
-    return form_v3(res[0, 0], res[0, 1], res[0, 2])
-
-
 def angle_around_axis(v1, v2, axis):
     axis = normalize(axis)
     v1 = normalize(np.cross(v1, axis))
@@ -331,8 +326,8 @@ if __name__ == '__main__':
                 Thread(target=solve_gfold, args=(currentCondition,)).start()
 
         # 变换到机体坐标系计算姿态控制，以下xyz均指机体系
-        target_direction_local = transform(target_direction, rotation_srf2local)  # 机体系的目标姿态的机体y轴指向
-        avel_local = transform(avel, rotation_srf2local)  # 机体系角速度
+        target_direction_local = rotation_srf2local @ target_direction  # 机体系的目标姿态的机体y轴指向
+        avel_local = rotation_srf2local @ avel  # 机体系角速度
         # pid控制，roll直接消除角速度
         control_pitch = -np.clip(ctrl_x_rot(angle_around_axis(target_direction_local, form_v3(0, 1, 0), form_v3(1, 0, 0)), game_delta_time), -1, 1)
         control_yaw = -np.clip(ctrl_z_rot(angle_around_axis(target_direction_local, form_v3(0, 1, 0), form_v3(0, 0, 1)), game_delta_time), -1, 1)
