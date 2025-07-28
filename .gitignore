@@ -127,3 +127,5 @@ dmypy.json
 GFOLD_p3/
 GFOLD_p4/
 .idea
+
+test.py

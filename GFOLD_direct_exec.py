@@ -94,7 +94,7 @@ def GFOLD_direct(N, pmark, packed_data):  # PRIMARY GFOLD SOLVER
         objective = Minimize(expression)
         problem = Problem(objective, con)
         print('solving p3')
-        obj_opt = problem.solve(solver=ECOS, verbose=True, feastol=5e-20)  # solver=SCS,max_iters=5000,verbose=True,use_indirect=False)
+        obj_opt = problem.solve(solver=MOSEK, verbose=True)#, feastol=5e-20)  # solver=SCS,max_iters=5000,verbose=True,use_indirect=False)
         # print(x.value)
         print('-----------------------------')
         # print(z.value)
@@ -109,7 +109,7 @@ def GFOLD_direct(N, pmark, packed_data):  # PRIMARY GFOLD SOLVER
         objective = Minimize(expression)
         problem = Problem(objective, con)
         print('solving p4')
-        obj_opt = problem.solve(solver=ECOS, verbose=True)  # solver=SCS,max_iters=5000,verbose=True,use_indirect=False,warm_start=True # OK to warm start b/c p1 gave us a decent answer probably
+        obj_opt = problem.solve(solver=MOSEK, verbose=True)  # solver=SCS,max_iters=5000,verbose=True,use_indirect=False,warm_start=True # OK to warm start b/c p1 gave us a decent answer probably
         print('-----------------------------')
 
     if program == 3:

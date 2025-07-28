@@ -166,7 +166,7 @@ if __name__ == '__main__':
     rad2deg = 180 / np.pi
     g0 = params['g0']
 
-    conn = krpc.connect(name='PID')
+    conn = krpc.connect(name='gfold')
     space_center = conn.space_center
     vessel = space_center.active_vessel
     flight = vessel.flight()
@@ -191,9 +191,9 @@ if __name__ == '__main__':
     throttle_limit_ctrl = params['throttle_limit_ctrl']
 
     # rotation
-    ctrl_x_rot = simple_pid.PID(Kp=params['ctrl_xz_rot.kp'], Kd=params['ctrl_xz_rot.kd'], differential_on_measurement=False)
+    ctrl_x_rot = simple_pid.PID(Kp=params['ctrl_xz_rot.kp'], Kd=params['ctrl_xz_rot.kd'], Ki=params['ctrl_xz_rot.ki'], differential_on_measurement=False)
     ctrl_y_avel_kp = params['ctrl_y_avel_kp']
-    ctrl_z_rot = simple_pid.PID(Kp=params['ctrl_xz_rot.kp'], Kd=params['ctrl_xz_rot.kd'], differential_on_measurement=False)
+    ctrl_z_rot = simple_pid.PID(Kp=params['ctrl_xz_rot.kp'], Kd=params['ctrl_xz_rot.kd'], Ki=params['ctrl_xz_rot.ki'], differential_on_measurement=False)
     k_x = params['k_x']
     k_v = params['k_v']
 
@@ -265,7 +265,7 @@ if __name__ == '__main__':
             gtf, gx, gu, gm, gs, gz = gfold_path  # g~: global naming issue
             # n_i = max(n_i + game_delta_time * 0.2 * N/tf, find_nearest_index(x, error, vel))
             n_i = max(n_i - game_delta_time * 0.2 * N / gtf, find_nearest_index(gx, error))
-            print(n_i)
+            print("{:.3f}".format(n_i))
             (x_i, v_i, u_i) = sample_index(n_i)
             (x_i_, v_i_, u_i_) = sample_index(n_i + min(1.5 * N / gtf, npl.norm(vel) / 50 * N / gtf))
 
@@ -305,9 +305,7 @@ if __name__ == '__main__':
             est_h = error[0] - vel[0] ** 2 / (2 * max_acc)
             est_h_low = error[0] - vel[0] ** 2 / (2 * max_acc_low)
             est_h_center = (est_h + est_h_low) / 2
-            vessel.control.throttle = np.clip(lerp(throttle_limit_ctrl[1] * final_throttle, throttle_limit_ctrl[1], -est_h_low / (est_h - est_h_low) * (1 + final_kp)), throttle_limit_ctrl[0],
-                                              throttle_limit_ctrl[1])
-
+            vessel.control.throttle = np.clip(lerp(throttle_limit_ctrl[1] * final_throttle, throttle_limit_ctrl[1], -est_h_low / (est_h - est_h_low) * (1 + final_kp)), throttle_limit_ctrl[0], throttle_limit_ctrl[1])
             error_hor = form_v3(0, error[1], error[2])
             vel_hor = form_v3(0, vel[1], vel[2])
             ctrl_hor = -error_hor * 0.03 - vel_hor * 0.06
@@ -326,19 +324,18 @@ if __name__ == '__main__':
                 Thread(target=solve_gfold, args=(currentCondition,)).start()
 
         # 变换到机体坐标系计算姿态控制，以下xyz均指机体系
-        target_direction_local = rotation_srf2local @ target_direction  # 机体系的目标姿态的机体y轴指向
-        avel_local = rotation_srf2local @ avel  # 机体系角速度
+        target_direction_local = target_direction @ rotation_srf2local  # 机体系的目标姿态的机体y轴指向
+        avel_local = avel @ rotation_srf2local  # 机体系角速度
         # pid控制，roll直接消除角速度
         control_pitch = -np.clip(ctrl_x_rot(angle_around_axis(target_direction_local, form_v3(0, 1, 0), form_v3(1, 0, 0)), game_delta_time), -1, 1)
         control_yaw = -np.clip(ctrl_z_rot(angle_around_axis(target_direction_local, form_v3(0, 1, 0), form_v3(0, 0, 1)), game_delta_time), -1, 1)
         control_roll = np.clip(avel_local[1] * ctrl_y_avel_kp, -1, 1)
-
         vessel.control.pitch = control_pitch
         vessel.control.yaw = control_yaw
         vessel.control.roll = control_roll
 
         # 终止条件
-        if (npl.norm(error[1:3]) < 3 and npl.norm(error[0]) < 1 and npl.norm(vel[1:3]) < 0.3 and npl.norm(vel[0]) < 0.5 and npl.norm(avel) < 0.2) or (vel[0] > 0 and npl.norm(error[0]) < 1):
+        if (npl.norm(error[1:3]) < 3 and npl.norm(error[0]) < 1 and npl.norm(vel[1:3]) < 1 and npl.norm(vel[0]) < 3) or (vel[0] > 0 and npl.norm(error[0]) < 1):
             vessel.control.throttle = 0
             break
 
